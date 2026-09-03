@@ -282,15 +282,17 @@ class StandardHaloModel:
 class HaloModelInterpolatedt:
     """
         class which, from a given DF, samples the speed of the dark matter halo relative to Earth at a given time
+        rho_dm is in Msun/kpc^3
     """
-    def __init__(self,distF,v_0=None,v_esc=None,t=59.37,N=500,epsrel=1e-2):
+    def __init__(self,distF,rho_dm=None,v_0=None,v_esc=None,t=59.37,N=100,epsrel=1e-2):
         self.distF=distF
         self.v_0= _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
         self.v_esc=_HALO_DEFAULTS['v_esc']*nu.km/nu.s if v_esc is None else v_esc
         self.vmax=v_max(t,v_esc,v_0)
+        Fac=3.79651645e-08
+        self.rho_dm=_HALO_DEFAULTS['rho_dm'] * nu.GeV/nu.c0**2 / nu.cm**3 if rho_dm is None else rho_dm*Fac
         vvec=np.linspace(0,self.vmax,N)
-        fvec=observed_speed_distfromdf(vvec,t=t,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)
-        self.interpcs=CubicSpline(vvec,fvec)
+        fvec=observed_speed_distfromdf(vvec,t=t,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)/rho_dm
     def velocity_dist(self,v,t):
         try:
             len(v)
