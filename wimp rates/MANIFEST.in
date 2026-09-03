@@ -1,8 +1,0 @@
-include README.md
-include HISTORY.md
-include LICENSE
-include requirements.txt
-
-recursive-include notebooks tests *
-recursive-exclude * __pycache__
-recursive-exclude * *.py[co]
