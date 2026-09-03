@@ -78,7 +78,7 @@ def dfDM(velssc):
     J=af(np.array([Rsol,0,zsol,vels[0],vels[1],vels[2]]))
     if(np.isnan(J[0]+J[1])):
         return 0
-    DistF=dfDarkHalo(np.array([J]))[0]/DMdens
+    DistF=dfDarkHalo(np.array([J]))[0]
     if np.isnan(DistF):
         print("nan:",np.sum(vels**2)**0.5/vesc,J,dfDarkHalo(np.array([J])))
     return DistF*1/(nu.km/nu.s)**3
@@ -92,11 +92,10 @@ halo_new = wp.StandardHaloModel(
     v_0=v0*nu.km/nu.s,
     v_esc=vesc*nu.km/nu.s,
     )
-halo_modelnew=wp.HaloModelInterpolatedt(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100)
+halo_modelnew=wp.HaloModelInterpolatedt(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3)
 v=np.linspace(0.1,800,300)
 t=59.67
 A=halo_modelnew.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s
-print("no:",A)
 plt.plot(v,halo_new.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s,color="blue",label="Standard halo model")
 plt.plot(v,A, label="df halo",color="red")
 plt.legend()
