@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.special import erf
 from scipy.integrate import dblquad
 from scipy.interpolate import CubicSpline
-
+from scipy.fft import rfft
 import wimpratesMod as wr
 export, __all__ = wr.exporter()
 
@@ -211,6 +211,7 @@ def f(phi,csth,v,vel_earth_t,df,e1,e2,e3):
 @export
 def observed_speed_distfromdf(v,t=59.37,distF=None,v_0=None,v_esc=None,epsrel=1e-2):
     v_0 = _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
+    v_esc = _HALO_DEFAULTS['v_esc'] * nu.km/nu.s if v_esc is None else v_esc
     if distF is None:
         v_0n = _HALO_DEFAULTS['v_0']*nu.km/nu.s
         v_escn = _HALO_DEFAULTS['v_esc']*nu.km/nu.s
@@ -248,8 +249,6 @@ def observed_speed_distfromdf(v,t=59.37,distF=None,v_0=None,v_esc=None,epsrel=1e
             if(csthmax>1):
                 csthmax=1
             result[i]=dblquad(f,-1,csthmax,0,2*np.pi,args=(v[i],vel_earth_t,distF,e1,e2,e3),epsrel=epsrel,epsabs=0)[0]
-            if np.isnan(result[i]):
-                print("no:",result[i],v)
         return result
     
     
@@ -276,36 +275,125 @@ class StandardHaloModel:
         # in units of per velocity,
         # v is in units of velocity
         return observed_speed_dist(v, t, v_0=self.v_0, v_esc=self.v_esc)
-
-
 @export
-class HaloModelInterpolatedt:
+def writeFourcoefs(distF,Filename="FourCoefs.txt",v_0=None,v_esc=None,N=100,epsrel=1e-2,Nf=5):
+    v_01=_HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0*nu.km/nu.s
+    v_esc1=_HALO_DEFAULTS['v_esc']*nu.km/nu.s if v_esc is None else v_esc*nu.km/nu.s
+    speedpec=np.sum((np.array(_HALO_DEFAULTS['v_pec']))**2)**0.5 * nu.km/nu.s
+    vmax=v_esc1+v_01+speedpec
+    vvec=np.linspace(0,vmax,N)
+    T=365.25
+    Nfc=Nf//2+1
+    fv=np.zeros((Nf,len(vvec)))
+    for j in range(Nf):
+        t1=j/Nf*T
+        fv[j,:]=observed_speed_distfromdf(
+                vvec,t=t1,distF=distF,v_0=v_01,v_esc=v_esc1,epsrel=epsrel)*nu.km/nu.s
+    a=np.zeros((Nfc,len(vvec)))*(1+1j)
+    for i in range(len(vvec)):
+        complA=rfft(fv[:,i])
+        a[:,i]=1/Nf*complA
+    np.savetxt(Filename,np.concatenate((np.array([vvec])*nu.s/nu.km,a)).T)
+@export
+class HaloModelInterpolated:
     """
-        class which, from a given DF, samples the speed of the dark matter halo relative to Earth at a given time
-        rho_dm is in Msun/kpc^3
-       Note rho_dm does not affect rate
+        class which, from a given DF, samples the speed of the dark matter halo relative to Earth
+        distF is distribution function f(vR,vz,vphi) normalised so int f(v)d^3v=1.
+        rho_dm is DM density
+        v_0 is circular speed at Earth
+        v_esc is escape speed
+        N is number of points to evaluate the speed at for interpolating
+        Nf is number of fourier coefficients
+        epsrel is relative accuracy of integral
     """
-    def __init__(self,distF,rho_dm=None,v_0=None,v_esc=None,t=59.37,N=100,epsrel=1e-2):
+    def __init__(self,distF,rho_dm=None,v_0=None,v_esc=None,N=100,Nf=5,epsrel=1e-2):
         self.distF=distF
         self.v_0= _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
         self.v_esc=_HALO_DEFAULTS['v_esc']*nu.km/nu.s if v_esc is None else v_esc
-        self.vmax=v_max(t,v_esc,v_0)
         self.rho_dm=_HALO_DEFAULTS['rho_dm'] * nu.GeV/nu.c0**2 / nu.cm**3 if rho_dm is None else rho_dm
-        vvec=np.linspace(0,self.vmax,N)
-        fvec=observed_speed_distfromdf(vvec,t=t,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)/(rho_dm)*nu.Msolar/nu.kpc**3
-        self.interpcs=CubicSpline(vvec,fvec)
+        speedpec=np.sum((np.array(_HALO_DEFAULTS['v_pec']))**2)**0.5 * nu.km/nu.s
+        vmax=self.v_esc+self.v_0+speedpec
+        vvec=np.linspace(0,vmax,N)
+        T=365.25
+        Nfc=Nf//2+1
+        fv=np.zeros((Nf,len(vvec)))
+        for j in range(Nf):
+            t1=j/Nf*T
+            fv[j,:]=observed_speed_distfromdf(vvec,t=t1,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)*nu.km/nu.s
+        a=np.zeros((Nfc,len(vvec)))*(1+1j)
+        for i in range(len(vvec)):
+            complA=rfft(fv[:,i])
+            a[:,i]=1/Nf*complA
+        self.interpola=CubicSpline(vvec,a.T)
+        self.Nt=Nfc
+        self.T=T
     def velocity_dist(self,v,t):
+        t=59.37 if t is None else t
+        th=2*np.pi/self.T*t
+        vmax=v_max(t,self.V_esc,self.v_0)
         try:
             len(v)
         except TypeError:
-            if(v>=self.vmax):
+            if(v>=vmax):
                 return 0
-            return self.interpcs(v)
+            Acompl=self.interpola(v)
+            res=Acompl[0].real
+            for i in range(1,self.Nt):
+                res+=2*(np.cos(i*th)*Acompl[i].real-np.sin(i*th)*Acompl[i].imag)
+            return res
         else:
             result=np.zeros(len(v))
             for i in range(len(v)):
-                if(v[i]>=self.vmax):
+                if(v[i]>=vmax):
                     result[i]=0
                 else:
-                    result[i]=self.interpcs(v[i])
+                    Acompl=self.interpola(v)
+                    result[i]=Acompl[0].real
+                    for i in range(1,self.Nt):
+                        result[i]+=2*(np.cos(i*th)*Acompl[i].real-np.sin(i*th)*Acompl[i].imag)
+            return result
+@export
+class HaloModelInterpolatedFromFile:
+    """
+        class which, from a given file, samples the speed of the dark matter halo relative to Earth
+        rho_dm is DM density
+        v_0 is circular speed at Earth
+        v_esc is escape speed
+    """
+    def __init__(self,Filename="FourCoefs.txt",rho_dm=None,v_0=None,v_esc=None):
+        self.v_0= _HALO_DEFAULTS['v_0'] * nu.km/nu.s if v_0 is None else v_0
+        self.v_esc=_HALO_DEFAULTS['v_esc']*nu.km/nu.s if v_esc is None else v_esc
+        self.rho_dm=_HALO_DEFAULTS['rho_dm'] * nu.GeV/nu.c0**2 / nu.cm**3 if rho_dm is None else rho_dm
+        T=365.25
+        self.T=T
+        va=np.loadtxt(Filename,dtype=np.complex128)
+        vvec=va[:,0].real*nu.km/nu.s
+        Nf=np.shape(va)[1]-1
+        a=va[:,1:Nf+1]*nu.s/nu.km
+        self.interpola=CubicSpline(vvec,a)
+        self.Nt=Nf
+    def velocity_dist(self,v,t):
+        t=59.37 if t is None else t
+        th=2*np.pi/self.T*t
+        vmax=v_max(t,self.v_esc,self.v_0)
+        try:
+            len(v)
+        except TypeError:
+            if(v>=vmax):
+                return 0
+            Acompl=self.interpola(v)
+            res=Acompl[0].real
+            for i in range(1,self.Nt-1):
+                res+=2*(np.cos(i*th)*Acompl[i].real-np.sin(i*th)*Acompl[i].imag)
+            return res
+        else:
+            result=np.zeros(len(v))
+            for i in range(len(v)):
+                if(v[i]>=vmax):
+                    result[i]=0
+                else:
+                    Acompl=self.interpola(v[i])
+                    result[i]=Acompl[0].real
+                    for j in range(1,self.Nt):
+                        result[i]+=2*(np.cos(j*th)*Acompl[j].real-np.sin(j*th)*Acompl[j].imag)
             return result
