@@ -2,8 +2,12 @@ import wimpratesMod as wp
 import numpy as np
 import matplotlib.pyplot as plt
 import numericalunits as nu
-
+#AGAMA needed
 import agama
+#This example creates a DF from potential file and DF parameters
+#From this, it produces a distribution function in speed relative to Earth.
+
+#For defining the DF
 def createNewDoublePowerLawDF(**params):
     def df(J):
         if(np.sum(J)==0):
@@ -71,6 +75,8 @@ potTot=agama.Potential("wimpratesMod/data/dataPot/mwmodel_potential.ini")
 af=agama.ActionFinder(potTot)
 #DM density- does not affect rate calculation in Msun/kpc^3
 DMdens=12e6
+
+#Defines distribution function f(v) in galactic frame
 def dfDM(velssc):
     vels=velssc*nu.s/nu.km
     if np.sum(vels**2)**0.5>=vesc:
@@ -89,6 +95,11 @@ v0=np.sqrt(Rsol*(-potTot.force([Rsol,0,0])[0]))
 
 
 halo_modelold = wp.StandardHaloModel()
+#Also can write to file using wp.writeFourcoefs(dfDM,Filename) to write a text file containing 
+#DF fourier coefs with time with name Filename.
+#Then to get a DF from this can take 
+#wp.HaloModelInterpolatedFromFile(Filename,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3) 
+#to get marginilised DF as function of speed of DM particle
 halo_modelnew=wp.HaloModelInterpolated(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3,
                                        Nf=3)
 v=np.linspace(0.1,800,300)
