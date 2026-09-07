@@ -55,7 +55,7 @@ try:
     from ConfigParser import RawConfigParser  # python 2
 except ImportError:
     from configparser import RawConfigParser  # python 3
-iniFileName = "dataPot/SCM_MW.ini"
+iniFileName = "wimpratesMod/data/dataPot/SCM_MW.ini"
 ini = RawConfigParser()
 ini.optionxform=str  # do not convert key to lowercase
 ini.read(iniFileName)
@@ -66,7 +66,7 @@ dfDarkHalo    = createNewDoublePowerLawDF(**iniDFDarkHalo)
 #height of sun
 zsol=0.025
 #total Potential
-potTot=agama.Potential("dataPot/mwmodel_potential.ini")
+potTot=agama.Potential("wimpratesMod/data/dataPot/mwmodel_potential.ini")
 #action finder
 af=agama.ActionFinder(potTot)
 #DM density- does not affect rate calculation in Msun/kpc^3
@@ -88,15 +88,12 @@ vesc=np.sqrt(-2*potTot.potential([Rsol,0,zsol]))
 v0=np.sqrt(Rsol*(-potTot.force([Rsol,0,0])[0]))
 
 
-halo_new = wp.StandardHaloModel(
-    v_0=v0*nu.km/nu.s,
-    v_esc=vesc*nu.km/nu.s,
-    )
-halo_modelnew=wp.HaloModelInterpolatedt(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3)
+halo_modelold = wp.StandardHaloModel()
+halo_modelnew=wp.HaloModelInterpolated(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3)
 v=np.linspace(0.1,800,300)
 t=59.67
 A=halo_modelnew.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s
-plt.plot(v,halo_new.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s,color="blue",label="Standard halo model")
+plt.plot(v,halo_modelold.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s,color="blue",label="Standard halo model")
 plt.plot(v,A, label="df halo",color="red")
 plt.legend()
 plt.xlabel("v (km/s)")
