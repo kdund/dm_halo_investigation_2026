@@ -7,9 +7,6 @@ from scipy.interpolate import interp1d
 from scipy.integrate import quad
 
 import wimpratesMod as wr
-try:
-    import agama
-except ImportError: agama=None
 
 export, __all__ = wr.exporter()
 __all__ += ['ATOMIC_WEIGHT']
