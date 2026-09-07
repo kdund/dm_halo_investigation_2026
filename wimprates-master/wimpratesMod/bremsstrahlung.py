@@ -6,9 +6,6 @@ import numericalunits as nu
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
-try:
-    import agama
-except ImportError: agama=None
 import wimpratesMod as wr
 export, __all__ = wr.exporter()
 
