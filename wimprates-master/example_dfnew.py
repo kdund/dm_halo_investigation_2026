@@ -81,7 +81,7 @@ def dfDM(velssc):
     DistF=dfDarkHalo(np.array([J]))[0]
     if np.isnan(DistF):
         print("nan:",np.sum(vels**2)**0.5/vesc,J,dfDarkHalo(np.array([J])))
-    return DistF*1/(nu.km/nu.s)**3
+    return DistF/DMdens*1/(nu.km/nu.s)**3
 #escape velocity from galaxy at sun
 vesc=np.sqrt(-2*potTot.potential([Rsol,0,zsol]))
 #circulat speed at sun's radius
@@ -89,7 +89,8 @@ v0=np.sqrt(Rsol*(-potTot.force([Rsol,0,0])[0]))
 
 
 halo_modelold = wp.StandardHaloModel()
-halo_modelnew=wp.HaloModelInterpolated(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3)
+halo_modelnew=wp.HaloModelInterpolated(dfDM,v_0=v0*nu.km/nu.s,v_esc=vesc*nu.km/nu.s,N=100,rho_dm=DMdens*nu.Msolar/(nu.kpc)**3,
+                                       Nf=3)
 v=np.linspace(0.1,800,300)
 t=59.67
 A=halo_modelnew.velocity_dist(v*nu.km/nu.s,t)*nu.km/nu.s
