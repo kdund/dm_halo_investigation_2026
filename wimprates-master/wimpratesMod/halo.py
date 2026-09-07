@@ -319,7 +319,7 @@ class HaloModelInterpolated:
         fv=np.zeros((Nf,len(vvec)))
         for j in range(Nf):
             t1=j/Nf*T
-            fv[j,:]=observed_speed_distfromdf(vvec,t=t1,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)*nu.km/nu.s
+            fv[j,:]=observed_speed_distfromdf(vvec,t=t1,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)
         a=np.zeros((Nfc,len(vvec)))*(1+1j)
         for i in range(len(vvec)):
             complA=rfft(fv[:,i])
