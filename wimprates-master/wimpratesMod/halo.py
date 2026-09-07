@@ -316,13 +316,13 @@ class HaloModelInterpolated:
         vvec=np.linspace(0,vmax,N)
         T=365.25
         Nfc=Nf//2+1
-        fv=np.zeros((Nf,len(vvec)))
+        fv=np.zeros((Nf,len(vvec)))*(1+1j)
         for j in range(Nf):
             t1=j/Nf*T
             fv[j,:]=observed_speed_distfromdf(vvec,t=t1,distF=distF,v_0=v_0,v_esc=v_esc,epsrel=epsrel)
         a=np.zeros((Nfc,len(vvec)))*(1+1j)
         for i in range(len(vvec)):
-            complA=rfft(fv[:,i])
+            complA=rfft(fv[:,i].real)
             a[:,i]=1/Nf*complA
         self.interpola=CubicSpline(vvec,a.T)
         self.Nt=Nfc
@@ -330,7 +330,7 @@ class HaloModelInterpolated:
     def velocity_dist(self,v,t):
         t=59.37 if t is None else t
         th=2*np.pi/self.T*t
-        vmax=v_max(t,self.V_esc,self.v_0)
+        vmax=v_max(t,self.v_esc,self.v_0)
         try:
             len(v)
         except TypeError:
@@ -338,7 +338,7 @@ class HaloModelInterpolated:
                 return 0
             Acompl=self.interpola(v)
             res=Acompl[0].real
-            for i in range(1,self.Nt):
+            for i in range(1,self.Nt-1):
                 res+=2*(np.cos(i*th)*Acompl[i].real-np.sin(i*th)*Acompl[i].imag)
             return res
         else:
@@ -347,10 +347,10 @@ class HaloModelInterpolated:
                 if(v[i]>=vmax):
                     result[i]=0
                 else:
-                    Acompl=self.interpola(v)
+                    Acompl=self.interpola(v[i])
                     result[i]=Acompl[0].real
-                    for i in range(1,self.Nt):
-                        result[i]+=2*(np.cos(i*th)*Acompl[i].real-np.sin(i*th)*Acompl[i].imag)
+                    for j in range(1,self.Nt):
+                        result[i]+=2*(np.cos(j*th)*Acompl[j].real-np.sin(j*th)*Acompl[j].imag)
             return result
 @export
 class HaloModelInterpolatedFromFile:
