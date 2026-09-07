@@ -78,23 +78,3 @@ def rate_wimp_std(es, mw, sigma_nucleon, m_med=float('inf'),
                       m_med=m_med * nu.GeV/nu.c0**2,
                       t=t, halo_model=halo_model, **kwargs)
             * (nu.keV * (1000 * nu.kg) * nu.year))
-
-@export
-def rate_wimpdf(es, mw, sigma_nucleon, interaction='SI',
-              detection_mechanism='elastic_nr', m_med=float('inf'),
-              t=None, df=None,Potential=None,af=None,
-              **kwargs):
-    dmechs = dict(elastic_nr=wr.rate_elasticdf,
-                  bremsstrahlung=wr.rate_bremsstrahlungdf)
-                  #migdal=wr.rate_migdal)
-    if detection_mechanism not in dmechs:
-        raise NotImplementedError(
-            "Unsupported detection mechanism '%s'" % detection_mechanism)
-    return dmechs[detection_mechanism](es,mw=mw,sigma_nucleon=sigma_nucleon,interaction=interaction,
-                                m_med=m_med,df=df,Potential=Potential,af=af,t=t,**kwargs)
-    
-
-@export
-def rat_wimp_stddf(es,mw,sigma_nucleon,m_med=float('inf'),t=None,df=None,Potential=None,af=None,**kwargs):
-    return rate_wimpdf(es=es*nu.keV,mw=mw*nu.GeV/nu.c0**2,sigma_nucleon=sigma_nucleon*nu.cm**2,m_med=m_med*nu.GeV/nu.c0**2,
-                            df=df,Potential=Potential,af=af,t=t,**kwargs) * (nu.keV * (1000 * nu.kg) * nu.year)
